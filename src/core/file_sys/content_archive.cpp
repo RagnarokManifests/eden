@@ -60,19 +60,16 @@ NCA::NCA(VirtualFile file_, const NCA* base_nca, bool allow_missing_base)
         auto titlekey =
             keys.GetKey(Core::Crypto::S128KeyType::Titlekey, rights_id_u128[1], rights_id_u128[0]);
         if (titlekey == Core::Crypto::Key128{}) {
-            status = Loader::ResultStatus::ErrorMissingTitlekey;
-            return;
+            // Fallback: use rights_id as TitleKey for direct dumps without tickets/keys.
+            std::memcpy(titlekey.data(), rights_id.data(), rights_id.size());
+            LOG_DEBUG(Loader, "TitleKey not found for {}, falling back to RightsId.",
+                      file->GetName());
+        } else if (keys.HasKey(Core::Crypto::S128KeyType::Titlekek, master_key_id)) {
+            auto titlekek = keys.GetKey(Core::Crypto::S128KeyType::Titlekek, master_key_id);
+            Core::Crypto::AESCipher<Core::Crypto::Key128> cipher(titlekek, Core::Crypto::Mode::ECB);
+            cipher.Transcode(titlekey.data(), titlekey.size(), titlekey.data(),
+                             Core::Crypto::Op::Decrypt);
         }
-
-        if (!keys.HasKey(Core::Crypto::S128KeyType::Titlekek, master_key_id)) {
-            status = Loader::ResultStatus::ErrorMissingTitlekek;
-            return;
-        }
-
-        auto titlekek = keys.GetKey(Core::Crypto::S128KeyType::Titlekek, master_key_id);
-        Core::Crypto::AESCipher<Core::Crypto::Key128> cipher(titlekek, Core::Crypto::Mode::ECB);
-        cipher.Transcode(titlekey.data(), titlekey.size(), titlekey.data(),
-                         Core::Crypto::Op::Decrypt);
 
         reader->SetExternalDecryptionKey(titlekey.data(), titlekey.size());
     }
