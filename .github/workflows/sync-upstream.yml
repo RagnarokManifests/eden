@@ -1,0 +1,40 @@
+name: Sync upstream (Eden)
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # cada 6 horas
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: master
+
+      - name: Fetch upstream
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://git.eden-emu.dev/eden-emu/eden.git
+          git fetch upstream --tags --prune
+
+      - name: Merge upstream/master into master
+        run: |
+          git merge --no-edit upstream/master
+          git push origin master
+
+      - name: Mirror upstream branches (upstream/*) and tags
+        run: |
+          # Copia limpia de cada rama de upstream bajo el prefijo upstream/
+          git push --force origin 'refs/remotes/upstream/*:refs/heads/upstream/*'
+          git push --force origin --tags
