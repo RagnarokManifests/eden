@@ -213,8 +213,7 @@ size_t InterpreterVisitor::StoreMultipleStructures(bool Q, Imm<4> opcode, Imm<2>
             for (size_t s = 0; s < structures; ++s) {
                 const Vec reg = static_cast<Vec>((static_cast<size_t>(Vt) + r * structures + s) % 32);
                 const u128 value = this->GetVec(reg);
-                std::memcpy(data.data() + offset,
-                            reinterpret_cast<const u8*>(&value) + e * element_bytes, element_bytes);
+                std::memcpy(data.data() + offset, reinterpret_cast<const u8*>(&value) + e * element_bytes, element_bytes);
                 offset += element_bytes;
             }
         }
